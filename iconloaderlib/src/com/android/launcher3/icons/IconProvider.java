@@ -272,9 +272,11 @@ public class IconProvider implements ResourceBasedOverride {
      * and system-version.
      */
     public void updateSystemState() {
-        mSystemState = mSystemState.withLocaleAndSdk(
-                mContext.getResources().getConfiguration().getLocales().toLanguageTags(),
-                Build.VERSION.SDK_INT);
+        mSystemState = new PersistedItemState()
+                .withLocaleAndSdk(
+                        mContext.getResources().getConfiguration().getLocales().toLanguageTags(),
+                        Build.VERSION.SDK_INT)
+                .withAdditionalValues(Build.VERSION.INCREMENTAL);
     }
 
     /**
