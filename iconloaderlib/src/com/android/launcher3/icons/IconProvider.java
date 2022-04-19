@@ -16,6 +16,8 @@
 
 package com.android.launcher3.icons;
 
+import static com.android.launcher3.util.override.MainThreadInitializedObject.forOverride;
+
 import static android.content.Intent.ACTION_DATE_CHANGED;
 import static android.content.Intent.ACTION_TIMEZONE_CHANGED;
 import static android.content.Intent.ACTION_TIME_CHANGED;
@@ -53,13 +55,16 @@ import androidx.core.os.BuildCompat;
 
 import com.android.launcher3.util.SafeCloseable;
 
+import com.android.launcher3.util.override.MainThreadInitializedObject;
+import com.android.launcher3.util.override.ResourceBasedOverride;
+
 import java.util.Calendar;
 import java.util.Objects;
 
 /**
  * Class to handle icon loading from different packages
  */
-public class IconProvider {
+public class IconProvider implements ResourceBasedOverride {
 
     private static final String TAG = "IconProvider";
     private static final boolean DEBUG = false;
@@ -75,6 +80,9 @@ public class IconProvider {
 
     @NonNull
     protected String mSystemState = "";
+
+    public static MainThreadInitializedObject<IconProvider> INSTANCE =
+            forOverride(IconProvider.class, R.string.icon_provider_class);
 
     public IconProvider(Context context) {
         mContext = context;
