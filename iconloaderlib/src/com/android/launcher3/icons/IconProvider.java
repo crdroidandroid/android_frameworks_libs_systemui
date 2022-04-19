@@ -19,6 +19,8 @@ package com.android.launcher3.icons;
 import static android.content.res.Resources.ID_NULL;
 import static android.graphics.drawable.AdaptiveIconDrawable.getExtraInsetFraction;
 
+import static com.android.launcher3.util.override.MainThreadInitializedObject.forOverride;
+
 import android.annotation.TargetApi;
 import android.content.ComponentName;
 import android.content.Context;
@@ -44,13 +46,16 @@ import androidx.core.os.BuildCompat;
 import com.android.launcher3.icons.cache.CachingLogic;
 import com.android.launcher3.util.ComponentKey;
 
+import com.android.launcher3.util.override.MainThreadInitializedObject;
+import com.android.launcher3.util.override.ResourceBasedOverride;
+
 import java.util.Calendar;
 import java.util.Objects;
 
 /**
  * Class to handle icon loading from different packages
  */
-public class IconProvider {
+public class IconProvider implements ResourceBasedOverride {
 
     private static final String TAG = "IconProvider";
     private static final boolean DEBUG = false;
@@ -64,6 +69,9 @@ public class IconProvider {
 
     @NonNull
     protected PersistedItemState mSystemState = new PersistedItemState();
+
+    public static MainThreadInitializedObject<IconProvider> INSTANCE =
+            forOverride(IconProvider.class, R.string.icon_provider_class);
 
     public IconProvider(Context context) {
         mContext = context;
