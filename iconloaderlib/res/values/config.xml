@@ -26,6 +26,6 @@
 
     <string name="calendar_component_name" translatable="false"></string>
     <string name="clock_component_name" translatable="false"></string>
-    <string name="icon_provider_class" translatable="false"></string>
+    <string name="icon_provider_class" translatable="false">com.android.launcher3.icons.ThirdPartyIconProvider</string>
 
 </resources>
