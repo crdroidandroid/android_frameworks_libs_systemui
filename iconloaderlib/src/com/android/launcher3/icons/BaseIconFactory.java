@@ -32,7 +32,9 @@ import android.graphics.drawable.Drawable;
 import android.graphics.drawable.DrawableWrapper;
 import android.graphics.drawable.InsetDrawable;
 import android.os.Build;
+import android.os.Process;
 import android.os.UserHandle;
+import android.util.Pair;
 import android.util.SparseArray;
 
 import androidx.annotation.ColorInt;
@@ -46,6 +48,8 @@ import com.android.launcher3.util.FlagOp;
 import com.android.launcher3.util.UserIconInfo;
 
 import java.lang.annotation.Retention;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * This class will be moved to androidx library. There shouldn't be any dependency outside
@@ -96,6 +100,19 @@ public class BaseIconFactory implements AutoCloseable {
     private Bitmap mWhiteShadowLayer;
 
     private int mWrapperBackgroundColor = DEFAULT_WRAPPER_BACKGROUND;
+
+    // User badges cached by size, e.g. workspace badge (large) vs widget badge (small)
+    private final LinkedHashMap<Pair<UserHandle, Integer>, Bitmap> mUserBadges =
+            new LinkedHashMap<>() {
+        // This *is* a cache, so it shouldn't grow forever. Lazily limit it by number of entries.
+        // We will likely only be dealing with 2 different sizes; multiply that by the number of
+        // profiles + 1 for the current user, and we really don't need much room. This is plenty.
+        private static final int MAX_ENTRIES = 50;
+        @Override
+        protected boolean removeEldestEntry(Map.Entry eldest) {
+            return size() > MAX_ENTRIES;
+        }
+    };
 
     private static int PLACEHOLDER_BACKGROUND_COLOR = Color.rgb(245, 245, 245);
 
@@ -240,6 +257,13 @@ public class BaseIconFactory implements AutoCloseable {
                         options == null ? null : options.mSourceHint
                     )
             );
+        }
+        if (options != null) {
+            final UserHandle user = options.mUserHandle != null ? options.mUserHandle
+                    : (options.mUserIconInfo != null ? options.mUserIconInfo.user : null);
+            if (user != null) {
+                info.setUser(user, this);
+            }
         }
         info = info.withFlags(getBitmapFlagOp(options));
         return info;
@@ -506,6 +530,68 @@ public class BaseIconFactory implements AutoCloseable {
     @NonNull
     public BitmapInfo makeDefaultIcon(IconProvider iconProvider) {
         return createBadgedIconBitmap(iconProvider.getFullResDefaultActivityIcon(mFullResIconDpi));
+    }
+
+    public Drawable getBadgeForUser(UserHandle user) {
+        return getBadgeForUser(user, mIconBitmapSize);
+    }
+
+    /**
+     * Returns a drawable that can be used as a badge for the user or null.
+     */
+    // @UiThread
+    public Drawable getBadgeForUser(UserHandle user, int iconSize) {
+        final int badgeSize = getBadgeSizeForIconSize(iconSize);
+        Bitmap badgeBitmap = getUserBadge(user, badgeSize);
+        FastBitmapDrawable d = new FastBitmapDrawable(badgeBitmap);
+        d.setFilterBitmap(true);
+        d.setBounds(0 /* left */, 0 /* top */, badgeBitmap.getWidth(), badgeBitmap.getHeight());
+        return d;
+    }
+
+    private Bitmap getUserBadge(UserHandle user, int badgeSize) {
+        if (badgeSize > mIconBitmapSize) {
+            throw new IllegalArgumentException("badgeSize cannot be larger than mIconBitmapSize: "
+                    + "got " + badgeSize + ", expected less than or equal to " + mIconBitmapSize);
+        }
+        Pair<UserHandle, Integer> userBadgeOfSize = new Pair<>(user, badgeSize);
+        synchronized (mUserBadges) {
+            Bitmap badgeBitmap = mUserBadges.get(userBadgeOfSize);
+            if (badgeBitmap != null) {
+                return badgeBitmap;
+            }
+
+            final Resources res = mContext.getResources();
+            Bitmap badgedBitmap = Bitmap.createBitmap(
+                    mIconBitmapSize, mIconBitmapSize, Bitmap.Config.ARGB_8888);
+
+            // PackageManager's getUserBadgedDrawableForDensity results in a giant work profile
+            // icon that extends outside of the badge icon's circle, seemingly no matter what
+            // arguments are provided. getUserBadgeForDensity is not even exposed (hidden).
+            // So, unfortunately, we draw into a full icon size Bitmap and then crop out the
+            // badge from the corner.
+            Drawable drawable = mContext.getPackageManager().getUserBadgedIcon(
+                    new BitmapDrawable(res, badgedBitmap), user);
+            /* Drawable drawable = mContext.getPackageManager().getUserBadgedDrawableForDensity(
+                    new BitmapDrawable(res, badgeBitmap), user,
+                    new Rect(0, 0, badgeSize, badgeSize),
+                    0); */
+            if (drawable instanceof BitmapDrawable) {
+                badgedBitmap = ((BitmapDrawable) drawable).getBitmap();
+            } else {
+                badgedBitmap.eraseColor(Color.TRANSPARENT);
+                Canvas c = new Canvas(badgedBitmap);
+                drawable.setBounds(0, 0, badgeSize, badgeSize);
+                drawable.draw(c);
+                c.setBitmap(null);
+            }
+            final int cropOffset = Math.max(mIconBitmapSize - badgeSize, 0);
+            badgeBitmap = Bitmap.createBitmap(badgedBitmap,
+                    cropOffset /* x */, cropOffset /* y */,
+                    badgeSize /* width */, badgeSize /* height */);
+            mUserBadges.put(userBadgeOfSize, badgeBitmap);
+            return badgeBitmap;
+        }
     }
 
     /**

@@ -19,6 +19,8 @@
 <resources>
     <color name="themed_icon_color">#A8C7FA</color>
     <color name="themed_icon_background_color">#003355</color>
+    <!-- Fallback colors specified in main colors.xml
     <color name="themed_badge_icon_color">#003355</color>
     <color name="themed_badge_icon_background_color">#A8C7FA</color>
+    -->
 </resources>
