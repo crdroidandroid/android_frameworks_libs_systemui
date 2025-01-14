@@ -144,7 +144,7 @@ public abstract class BaseIconCache {
             @NonNull final Looper bgLooper, final int iconDpi, final int iconPixelSize,
             final boolean inMemoryCache) {
         this(context, dbFileName, bgLooper, iconDpi, iconPixelSize, inMemoryCache,
-                new IconProvider(context));
+                IconProvider.INSTANCE.get(context));
     }
 
     public BaseIconCache(@NonNull final Context context, @Nullable final String dbFileName,
