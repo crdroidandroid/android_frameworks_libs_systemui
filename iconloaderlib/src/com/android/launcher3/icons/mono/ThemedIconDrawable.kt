@@ -16,6 +16,7 @@
 package com.android.launcher3.icons.mono
 
 import android.content.Context
+import android.content.res.Resources
 import android.graphics.Bitmap
 import android.graphics.BlendMode.SRC_IN
 import android.graphics.BlendModeColorFilter
@@ -90,6 +91,14 @@ class ThemedIconDrawable(constantState: ThemedConstantState) :
         @JvmStatic
         fun getColors(context: Context): IntArray {
             val res = context.resources
+            return intArrayOf(
+                res.getColor(R.color.themed_icon_background_color),
+                res.getColor(R.color.themed_icon_color),
+            )
+        }
+
+        @JvmStatic
+        fun getColors(res: Resources): IntArray {
             return intArrayOf(
                 res.getColor(R.color.themed_icon_background_color),
                 res.getColor(R.color.themed_icon_color),

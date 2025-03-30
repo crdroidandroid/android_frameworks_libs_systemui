@@ -38,6 +38,8 @@ import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.res.Resources;
 import android.content.res.TypedArray;
 import android.graphics.drawable.AdaptiveIconDrawable;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.InsetDrawable;
 import android.os.Build;
@@ -54,6 +56,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.os.BuildCompat;
 
+import com.android.launcher3.icons.mono.ThemedIconDrawable;
 import com.android.launcher3.util.SafeCloseable;
 
 import com.android.launcher3.util.override.MainThreadInitializedObject;
@@ -167,6 +170,12 @@ public class IconProvider implements ResourceBasedOverride {
                 AdaptiveIconDrawable aid = (AdaptiveIconDrawable) icon;
                 icon = new AdaptiveIconDrawable(aid.getBackground(),
                         aid.getForeground(), td.loadPaddedDrawable());
+            } else if (ATLEAST_T && icon instanceof BitmapDrawable && td != null) {
+                int[] colors = ThemedIconDrawable.getColors(td.mResources);
+                Drawable bg = new ColorDrawable(colors[0]);
+                Drawable fg = new ColorDrawable(colors[1]);
+                icon = new AdaptiveIconDrawable(bg, fg,
+                                td.loadPaddedDrawable());
             }
         }
         return icon;
