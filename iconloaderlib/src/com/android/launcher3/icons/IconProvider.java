@@ -31,7 +31,10 @@ import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.res.Resources;
 import android.content.res.TypedArray;
+import android.graphics.Color;
 import android.graphics.drawable.AdaptiveIconDrawable;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.InsetDrawable;
 import android.os.Build;
@@ -64,6 +67,10 @@ public class IconProvider implements ResourceBasedOverride {
     private static final String ICON_METADATA_KEY_PREFIX = ".dynamic_icons";
 
     private static final String SYSTEM_STATE_SEPARATOR = " ";
+
+    private static final float LEGACY_ICON_SCALE =
+            (float) Math.sqrt(375.0 / 576) * .7f
+                    * (1f / (1 + 2 * getExtraInsetFraction()));
 
     protected final Context mContext;
     private final ComponentName mCalendar;
@@ -149,13 +156,36 @@ public class IconProvider implements ResourceBasedOverride {
         }
         if (icon == null) {
             icon = loadPackageIconWithFallback(info, appInfo, iconDpi);
-            if (ATLEAST_T && icon instanceof AdaptiveIconDrawable && td != null) {
-                AdaptiveIconDrawable aid = (AdaptiveIconDrawable) icon;
-                icon = new AdaptiveIconDrawable(aid.getBackground(),
-                        aid.getForeground(), td.loadPaddedDrawable());
+            if (ATLEAST_T && td != null) {
+                Drawable monochrome = td.loadPaddedDrawable();
+                if (icon instanceof AdaptiveIconDrawable) {
+                    AdaptiveIconDrawable aid = (AdaptiveIconDrawable) icon;
+                    icon = new AdaptiveIconDrawable(aid.getBackground(),
+                            aid.getForeground(), monochrome);
+                } else if (monochrome != null && icon instanceof BitmapDrawable) {
+                    icon = new AdaptiveIconDrawable(
+                            new ColorDrawable(Color.WHITE),
+                            wrapIntoSquareDrawable(icon),
+                            monochrome);
+                }
             }
         }
         return icon;
+    }
+
+    private Drawable wrapIntoSquareDrawable(Drawable icon) {
+        float h = icon.getIntrinsicHeight();
+        float w = icon.getIntrinsicWidth();
+        float scaleX = LEGACY_ICON_SCALE;
+        float scaleY = LEGACY_ICON_SCALE;
+        if (h > w && w > 0) {
+            scaleX *= w / h;
+        } else if (w > h && h > 0) {
+            scaleY *= h / w;
+        }
+        scaleX = (1 - scaleX) / 2;
+        scaleY = (1 - scaleY) / 2;
+        return new InsetDrawable(icon, scaleX, scaleY, scaleX, scaleY);
     }
 
     protected ThemeData getThemeDataForPackage(String packageName) {
