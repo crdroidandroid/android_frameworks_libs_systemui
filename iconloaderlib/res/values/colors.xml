@@ -17,10 +17,10 @@
 */
 -->
 <resources>
-    <color name="themed_icon_color">#0842A0</color>
-    <color name="themed_icon_background_color">#D3E3FD</color>
-    <color name="themed_badge_icon_color">#0842A0</color>
-    <color name="themed_badge_icon_background_color">#D3E3FD</color>
+    <color name="themed_icon_color">@android:color/system_accent1_700</color>
+    <color name="themed_icon_background_color">@android:color/system_neutral1_50</color>
+    <color name="themed_badge_icon_color">@android:color/system_accent1_700</color>
+    <color name="themed_badge_icon_background_color">@android:color/system_accent1_100</color>
 
     <color name="badge_tint_instant">@android:color/black</color>
     <color name="badge_tint_work">#1A73E8</color>
