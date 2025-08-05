@@ -647,7 +647,7 @@ constructor(
             ComponentKey(ComponentName(packageName, packageName + EMPTY_CLASS_NAME), user)
 
         // Ensures themed bitmaps in the icon cache are invalidated
-        @JvmField val RELEASE_VERSION = if (Flags.forceMonochromeAppIcons()) 10 else 9
+        @JvmField val RELEASE_VERSION = 10
 
         @JvmField val TABLE_NAME = "icons"
         @JvmField val COLUMN_ROWID = "rowid"
