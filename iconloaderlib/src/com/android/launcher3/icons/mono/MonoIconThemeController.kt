@@ -81,7 +81,7 @@ class MonoIconThemeController(
             )
         }
 
-        if (Flags.forceMonochromeAppIcons() && shouldForceThemeIcon) {
+        if (shouldForceThemeIcon) {
             val monoFactory = MonochromeIconFactory(info.icon.width)
             val wrappedIcon = monoFactory.wrap(icon)
             return MonoThemedBitmap(
