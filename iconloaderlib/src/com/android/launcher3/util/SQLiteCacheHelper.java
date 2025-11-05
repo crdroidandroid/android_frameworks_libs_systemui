@@ -3,11 +3,14 @@ package com.android.launcher3.util;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
+import android.database.DatabaseErrorHandler;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
 import android.database.sqlite.SQLiteFullException;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Log;
+
+import java.io.File;
 
 /**
  * An extension of {@link SQLiteOpenHelper} with utility methods for a single table cache DB.
@@ -75,8 +78,20 @@ public abstract class SQLiteCacheHelper {
      * @see SQLiteDatabase#query(String, String[], String, String[], String, String, String)
      */
     public Cursor query(String[] columns, String selection, String[] selectionArgs) {
-        return mOpenHelper.getReadableDatabase().query(
-                mTableName, columns, selection, selectionArgs, null, null, null);
+        try {
+            SQLiteDatabase db;
+            try {
+                db = mOpenHelper.getReadableDatabase();
+            } catch (SQLiteException e) {
+                Log.d(TAG, "Error opening cache DB", e);
+                return null;
+            }
+
+            return db.query(mTableName, columns, selection, selectionArgs, null, null, null);
+        } catch (SQLiteException e) {
+            Log.d(TAG, "Error querying cache DB", e);
+            return null;
+        }
     }
 
     public void clear() {
@@ -89,13 +104,26 @@ public abstract class SQLiteCacheHelper {
 
     protected abstract void onCreateTable(SQLiteDatabase db);
 
+    private static class SqliteCacheErrorHandler implements DatabaseErrorHandler {
+        @Override
+        public void onCorruption(SQLiteDatabase dbObj) {
+            try {
+                Log.w(TAG, "Suppressing database corruption for " + dbObj.getPath());
+                File dbFile = new File(dbObj.getPath());
+                dbObj.close();
+                dbFile.delete();
+            } catch (Exception ignore) {
+            }
+        }
+    }
+
     /**
      * A private inner class to prevent direct DB access.
      */
     private class MySQLiteOpenHelper extends NoLocaleSQLiteHelper {
 
         public MySQLiteOpenHelper(Context context, String name, int version) {
-            super(context, name, version);
+            super(context, name, null, version, new SqliteCacheErrorHandler());
         }
 
         @Override

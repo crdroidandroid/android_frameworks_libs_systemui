@@ -43,6 +43,14 @@ public abstract class NoLocaleSQLiteHelper extends SQLiteOpenHelper {
         }
     }
 
+    public NoLocaleSQLiteHelper(Context context, String name, CursorFactory factory,
+                                int version, DatabaseErrorHandler errorHandler) {
+        super(ATLEAST_P ? context : new NoLocalContext(context), name, factory, version, errorHandler);
+        if (ATLEAST_P) {
+            setOpenParams(new OpenParams.Builder().addOpenFlags(NO_LOCALIZED_COLLATORS).build());
+        }
+    }
+
     private static class NoLocalContext extends ContextWrapper {
         public NoLocalContext(Context base) {
             super(base);
