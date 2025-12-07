@@ -135,7 +135,8 @@ public class ColorScheme {
         mNeutral2 = new TonalPalette(bgScheme.neutralVariantPalette,
                 tintBackground && wholePalette ? luminanceFactor : 1f,
                 tintBackground && wholePalette ? chromaFactor : 1f);
-        mError = new TonalPalette(mMaterialScheme.errorPalette);
+        mError = new TonalPalette(mMaterialScheme.errorPalette,
+                luminanceFactor, chromaFactor);
     }
 
     public ColorScheme(@ColorInt int seed, boolean darkTheme) {
