@@ -38,25 +38,58 @@ public class DynamicColors {
      * Gets all DynamicColor tokens for the neutral palettes.
      */
     public static List<Pair<String, DynamicColor>> getAllNeutralPalette() {
+        return getAllNeutralPalette(1f, 1f, false);
+    }
+
+    /**
+     * Gets all DynamicColor tokens for the neutral palettes.
+     * @param lFactor multiplier of luminance
+     * @param cFactor multiplier of chroma
+     * @param whole whether to tint whole palette
+     */
+    public static List<Pair<String, DynamicColor>> getAllNeutralPalette(float lFactor, float cFactor, boolean whole) {
         List<Pair<String, Function<DynamicScheme, TonalPalette>>> neutralPaletteMap = Arrays.asList(
-                new Pair<>("neutral1", (s) -> s.neutralPalette),
+                new Pair<>("neutral1", (s) -> s.neutralPalette)
+        );
+        List<Pair<String, Function<DynamicScheme, TonalPalette>>> neutralVariantPaletteMap = Arrays.asList(
                 new Pair<>("neutral2", (s) -> s.neutralVariantPalette)
         );
         // Call the helper method with the specific neutral palettes
-        return generatePaletteColors(neutralPaletteMap);
+        List<Pair<String, DynamicColor>> result = generatePaletteColors(neutralPaletteMap, lFactor, cFactor);
+        result.addAll(whole ? generatePaletteColors(neutralVariantPaletteMap, lFactor, cFactor)
+                : generatePaletteColors(neutralVariantPaletteMap));
+        return result;
     }
 
     /**
      * Gets all DynamicColor tokens for the accent palettes.
      */
     public static List<Pair<String, DynamicColor>> getAllAccentPalette() {
-        List<Pair<String, Function<DynamicScheme, TonalPalette>>> accentPaletteMap = Arrays.asList(
-                new Pair<>("accent1", (s) -> s.primaryPalette),
-                new Pair<>("accent2", (s) -> s.secondaryPalette),
+        return getAllAccentPalette(1f, 1f, false);
+    }
+
+    /**
+     * Gets all DynamicColor tokens for the accent palettes.
+     * @param lFactor multiplier of luminance
+     * @param cFactor multiplier of chroma
+     * @param whole whether to tint whole palette
+     */
+    public static List<Pair<String, DynamicColor>> getAllAccentPalette(float lFactor, float cFactor, boolean whole) {
+        List<Pair<String, Function<DynamicScheme, TonalPalette>>> primaryAccentPaletteMap = Arrays.asList(
+                new Pair<>("accent1", (s) -> s.primaryPalette)
+        );
+        List<Pair<String, Function<DynamicScheme, TonalPalette>>> secondaryAccentPaletteMap = Arrays.asList(
+                new Pair<>("accent2", (s) -> s.secondaryPalette)
+        );
+        List<Pair<String, Function<DynamicScheme, TonalPalette>>> tertiaryPaletteMap = Arrays.asList(
                 new Pair<>("accent3", (s) -> s.tertiaryPalette)
         );
         // Call the helper method with the specific accent palettes
-        return generatePaletteColors(accentPaletteMap);
+        List<Pair<String, DynamicColor>> result = generatePaletteColors(primaryAccentPaletteMap, lFactor, cFactor);
+        result.addAll(whole ? generatePaletteColors(secondaryAccentPaletteMap, lFactor, cFactor)
+                : generatePaletteColors(secondaryAccentPaletteMap));
+        result.addAll(generatePaletteColors(tertiaryPaletteMap));
+        return result;
     }
 
     /**
@@ -127,6 +160,11 @@ public class DynamicColors {
 
     private static List<Pair<String, DynamicColor>> generatePaletteColors(
             List<Pair<String, Function<DynamicScheme, TonalPalette>>> paletteMap) {
+        return generatePaletteColors(paletteMap, 1f, 1f);
+    }
+
+    private static List<Pair<String, DynamicColor>> generatePaletteColors(
+            List<Pair<String, Function<DynamicScheme, TonalPalette>>> paletteMap, float lFactor, float cFactor) {
 
         return paletteMap.stream()
                 .flatMap(palettePair -> {
@@ -140,12 +178,14 @@ public class DynamicColors {
                         DynamicColor token = new DynamicColor(
                                 /* name= */ tokenName,
                                 /* palette= */ paletteExtractor,
-                                /* tone= */ (s) -> (double) ((1000.0f - shade) / 10f),
+                                /* tone= */ (s) -> (double) ((1000.0f - shade) / 10f) * lFactor,
                                 /* isBackground= */ true,
+                                /* chromaMultiplier */ (s) -> (double) cFactor,
                                 /* background= */ null,
                                 /* secondBackground= */ null,
                                 /* contrastCurve= */ null,
-                                /* toneDeltaPair= */ null);
+                                /* toneDeltaPair= */ null,
+                                /* opacity */ null);
 
                         return new Pair<>(tokenName, token);
                     });
