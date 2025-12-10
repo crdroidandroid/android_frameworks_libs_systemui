@@ -16,6 +16,8 @@
 
 package com.android.systemui.monet;
 
+import com.google.ux.material.libmonet.hct.Hct;
+
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -31,11 +33,21 @@ public class TonalPalette {
     public final Map<Integer, Integer> allShadesMapped;
 
     TonalPalette(com.google.ux.material.libmonet.palettes.TonalPalette materialTonalPalette) {
+        this(materialTonalPalette, 1f, 1f);
+    }
+
+    TonalPalette(com.google.ux.material.libmonet.palettes.TonalPalette materialTonalPalette,
+            float luminanceFactor, float chromaFactor) {
+        Hct newHct = materialTonalPalette.getKeyColor();
+        newHct.setChroma(newHct.getChroma() * chromaFactor);
+        newHct.setTone(newHct.getTone() * luminanceFactor);
+        materialTonalPalette = com.google.ux.material.libmonet.palettes.TonalPalette.fromHct(newHct);
+
         this.mMaterialTonalPalette = materialTonalPalette;
-        this.allShades = SHADE_KEYS.stream().map(key -> getAtTone(key.floatValue())).collect(
-                Collectors.toList());
+        this.allShades = SHADE_KEYS.stream().map(key -> getAtTone(key.floatValue(), luminanceFactor))
+                .collect(Collectors.toList());
         this.allShadesMapped = SHADE_KEYS.stream().collect(
-                Collectors.toMap(key -> key, key -> getAtTone(key.floatValue())));
+                Collectors.toMap(key -> key, key -> getAtTone(key.floatValue(), luminanceFactor)));
     }
 
     /**
@@ -45,6 +57,20 @@ public class TonalPalette {
      */
     public int getAtTone(float shade) {
         return mMaterialTonalPalette.tone((int) ((1000.0f - shade) / 10f));
+    }
+
+    /**
+     * Dynamically computed tones across the full range from 0 to 1000
+     * @param shade expected shade from 0 (white) to 1000 (black)
+     * @param luminanceFactor luminance factor to multiply by
+     * @return Int representing color at new shade / tone
+     */
+    public int getAtTone(float shade, float luminanceFactor) {
+        int tone = (int) ((1000.0f - shade) / 10f);
+        tone = Math.round((float) tone * luminanceFactor);
+        if (tone > 100) tone = 100;
+        else if (tone < 0) tone = 0;
+        return mMaterialTonalPalette.tone(tone);
     }
 
     // Predefined & precomputed tones
