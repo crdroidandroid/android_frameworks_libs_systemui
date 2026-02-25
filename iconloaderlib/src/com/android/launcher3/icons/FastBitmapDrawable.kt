@@ -142,7 +142,8 @@ constructor(
         if (paintAlpha != alpha) {
             paintAlpha = alpha
             paint.alpha = alpha
-            invalidateSelf()
+            // BubbleTextView manages via hw layer now, otherwise this tanks frame rate
+            //invalidateSelf()
             badge?.alpha = alpha
             delegate.setAlpha(alpha)
         }
