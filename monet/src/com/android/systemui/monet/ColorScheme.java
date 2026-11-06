@@ -45,6 +45,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -89,6 +90,29 @@ public class ColorScheme {
             double contrastLevel, SpecVersion specVersion, Platform platform,
             float luminanceFactor, float chromaFactor, boolean wholePalette,
             boolean tintBackground, Integer bgSeed) {
+        this(seeds, isDark, style, contrastLevel, specVersion, platform,
+                luminanceFactor, chromaFactor, 0f, wholePalette, tintBackground, bgSeed);
+    }
+
+    public ColorScheme(@NonNull @Size(min = 1) List<Integer> seeds, boolean isDark,
+            @ThemeStyle.Type int style,
+            double contrastLevel, SpecVersion specVersion, Platform platform,
+            float luminanceFactor, float chromaFactor, float primaryChromaBoost,
+            boolean wholePalette, boolean tintBackground, Integer bgSeed) {
+        this(seeds, isDark, style, contrastLevel, specVersion, platform,
+                luminanceFactor, chromaFactor,
+                new float[] {1f + Math.max(0f, Math.min(300f, primaryChromaBoost)) / 100f,
+                        1f, 1f, 1f},
+                new float[] {1f, 1f, 1f, 1f},
+                wholePalette, tintBackground, bgSeed);
+    }
+
+    public ColorScheme(@NonNull @Size(min = 1) List<Integer> seeds, boolean isDark,
+            @ThemeStyle.Type int style,
+            double contrastLevel, SpecVersion specVersion, Platform platform,
+            float luminanceFactor, float chromaFactor,
+            float[] paletteChromas, float[] paletteValues,
+            boolean wholePalette, boolean tintBackground, Integer bgSeed) {
 
         this.mSeeds = seeds;
         this.mIsDark = isDark;
@@ -123,7 +147,7 @@ public class ColorScheme {
                                     : seed));
         }).toList();
 
-        mMaterialScheme = switch (style) {
+        final DynamicScheme originalScheme = switch (style) {
             case ThemeStyle.SPRITZ -> new SchemeNeutral(seedHcts, isDark, contrastLevel,
                     specVersion,
                     platform);
@@ -152,6 +176,22 @@ public class ColorScheme {
             default -> throw new IllegalArgumentException("Unknown style: " + style);
         };
 
+        final float[] c = normalizedFactors(paletteChromas);
+        final float[] v = normalizedFactors(paletteValues);
+        mMaterialScheme = allDefault(c) ? originalScheme : new DynamicScheme(
+                originalScheme.sourceColorHctList,
+                originalScheme.variant,
+                originalScheme.isDark,
+                originalScheme.contrastLevel,
+                originalScheme.platform,
+                originalScheme.specVersion,
+                tuneChroma(originalScheme.primaryPalette, c[0]),
+                tuneChroma(originalScheme.secondaryPalette, c[1]),
+                tuneChroma(originalScheme.tertiaryPalette, c[2]),
+                tuneChroma(originalScheme.neutralPalette, c[3]),
+                tuneChroma(originalScheme.neutralVariantPalette, c[3]),
+                Optional.of(originalScheme.errorPalette));
+
         final DynamicScheme bgScheme = switch (style) {
             case ThemeStyle.SPRITZ -> new SchemeNeutral(bgSeedHcts, isDark, contrastLevel);
             case ThemeStyle.TONAL_SPOT -> new SchemeTonalSpot(bgSeedHcts, isDark, contrastLevel);
@@ -167,18 +207,45 @@ public class ColorScheme {
             default -> throw new IllegalArgumentException("Unknown style: " + style);
         };
 
-        mAccent1 = new TonalPalette(mMaterialScheme.primaryPalette, luminanceFactor, chromaFactor);
+        mAccent1 = new TonalPalette(mMaterialScheme.primaryPalette,
+                luminanceFactor * v[0], chromaFactor);
         mAccent2 = new TonalPalette(mMaterialScheme.secondaryPalette,
-                wholePalette ? luminanceFactor : 1f,
+                (wholePalette ? luminanceFactor : 1f) * v[1],
                 wholePalette ? chromaFactor : 1f);
-        mAccent3 = new TonalPalette(mMaterialScheme.tertiaryPalette, luminanceFactor, chromaFactor);
-        mNeutral1 = new TonalPalette(bgScheme.neutralPalette,
-                tintBackground ? luminanceFactor : 1f,
+        mAccent3 = new TonalPalette(mMaterialScheme.tertiaryPalette,
+                luminanceFactor * v[2], chromaFactor);
+        mNeutral1 = new TonalPalette(tuneChroma(bgScheme.neutralPalette, c[3]),
+                (tintBackground ? luminanceFactor : 1f) * v[3],
                 tintBackground ? chromaFactor : 1f);
-        mNeutral2 = new TonalPalette(bgScheme.neutralVariantPalette,
-                tintBackground && wholePalette ? luminanceFactor : 1f,
+        mNeutral2 = new TonalPalette(tuneChroma(bgScheme.neutralVariantPalette, c[3]),
+                (tintBackground && wholePalette ? luminanceFactor : 1f) * v[3],
                 tintBackground && wholePalette ? chromaFactor : 1f);
         mError = new TonalPalette(mMaterialScheme.errorPalette, luminanceFactor, chromaFactor);
+    }
+
+    private static float[] normalizedFactors(float[] factors) {
+        float[] normalized = {1f, 1f, 1f, 1f};
+        if (factors != null) {
+            for (int i = 0; i < Math.min(normalized.length, factors.length); i++) {
+                normalized[i] = Float.isFinite(factors[i])
+                        ? Math.max(0f, Math.min(6f, factors[i])) : 1f;
+            }
+        }
+        return normalized;
+    }
+
+    private static boolean allDefault(float[] factors) {
+        for (float factor : factors) {
+            if (factor != 1f) return false;
+        }
+        return true;
+    }
+
+    private static com.google.ux.material.libmonet.palettes.TonalPalette tuneChroma(
+            com.google.ux.material.libmonet.palettes.TonalPalette palette, float multiplier) {
+        return multiplier == 1f ? palette
+                : com.google.ux.material.libmonet.palettes.TonalPalette.fromHueAndChroma(
+                        palette.getHue(), palette.getChroma() * multiplier);
     }
 
     public ColorScheme(@ColorInt int seed, boolean isDark, @ThemeStyle.Type int style,
