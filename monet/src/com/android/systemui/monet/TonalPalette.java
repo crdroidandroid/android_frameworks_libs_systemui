@@ -24,7 +24,9 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 public class TonalPalette {
+    /** Untouched source palette. Never mutated: libmonet hands out its key color by reference. */
     private final com.google.ux.material.libmonet.palettes.TonalPalette mMaterialTonalPalette;
+    private final float mChromaFactor;
     /**
      * @deprecated Do not use. For color system only
      */
@@ -36,15 +38,17 @@ public class TonalPalette {
         this(materialTonalPalette, 1f, 1f);
     }
 
+    /**
+     * Shades are computed exactly like the {@code system_<palette>_<shade>} overlay tokens in
+     * {@link DynamicColors}: tone = shade tone * luminanceFactor (clamped to [0, 100]), then the
+     * chroma at that tone is multiplied by chromaFactor. Keep the two in sync.
+     */
     TonalPalette(com.google.ux.material.libmonet.palettes.TonalPalette materialTonalPalette,
             float luminanceFactor, float chromaFactor) {
-        Hct newHct = materialTonalPalette.getKeyColor();
-        newHct.setChroma(newHct.getChroma() * chromaFactor);
-        newHct.setTone(newHct.getTone() * luminanceFactor);
-        materialTonalPalette = com.google.ux.material.libmonet.palettes.TonalPalette.fromHct(newHct);
-
         this.mMaterialTonalPalette = materialTonalPalette;
-        this.allShades = SHADE_KEYS.stream().map(key -> getAtTone(key.floatValue(), luminanceFactor))
+        this.mChromaFactor = Float.isFinite(chromaFactor) ? Math.max(0f, chromaFactor) : 1f;
+        this.allShades = SHADE_KEYS.stream()
+                .map(key -> getAtTone(key.floatValue(), luminanceFactor))
                 .collect(Collectors.toList());
         this.allShadesMapped = SHADE_KEYS.stream().collect(
                 Collectors.toMap(key -> key, key -> getAtTone(key.floatValue(), luminanceFactor)));
@@ -56,7 +60,7 @@ public class TonalPalette {
      * @return Int representing color at new shade / tone
      */
     public int getAtTone(float shade) {
-        return mMaterialTonalPalette.tone((int) ((1000.0f - shade) / 10f));
+        return getAtTone(shade, 1f);
     }
 
     /**
@@ -66,11 +70,13 @@ public class TonalPalette {
      * @return Int representing color at new shade / tone
      */
     public int getAtTone(float shade, float luminanceFactor) {
-        int tone = (int) ((1000.0f - shade) / 10f);
-        tone = Math.round((float) tone * luminanceFactor);
-        if (tone > 100) tone = 100;
-        else if (tone < 0) tone = 0;
-        return mMaterialTonalPalette.tone(tone);
+        final double factor = Float.isFinite(luminanceFactor) ? luminanceFactor : 1d;
+        final double tone = Math.max(0d, Math.min(100d, (1000.0 - shade) / 10.0 * factor));
+        Hct hct = mMaterialTonalPalette.getHct(tone);
+        if (mChromaFactor != 1f) {
+            hct = Hct.from(hct.getHue(), hct.getChroma() * mChromaFactor, hct.getTone());
+        }
+        return hct.toInt();
     }
 
     // Predefined & precomputed tones

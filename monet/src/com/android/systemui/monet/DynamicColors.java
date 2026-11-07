@@ -48,13 +48,21 @@ public class DynamicColors {
      * @param whole whether to tint whole palette
      */
     public static List<Pair<String, DynamicColor>> getAllNeutralPalette(float lFactor, float cFactor, boolean whole) {
-        return getAllNeutralPalette(lFactor, cFactor, whole, 1f);
+        return getAllNeutralPalette(lFactor, cFactor, whole, MonetFactors.DEFAULT);
     }
 
+    /**
+     * Gets all DynamicColor tokens for the neutral palettes.
+     * @param lFactor multiplier of luminance
+     * @param cFactor multiplier of chroma
+     * @param whole whether to tint whole palette
+     * @param neutralValue per-palette value (tone) multiplier for neutral1/neutral2.
+     *                     Chroma per palette is applied on the DynamicScheme itself
+     *                     (see {@link ColorScheme}), not here.
+     */
     public static List<Pair<String, DynamicColor>> getAllNeutralPalette(
             float lFactor, float cFactor, boolean whole, float neutralValue) {
-        final float value = Float.isFinite(neutralValue)
-                ? Math.max(0f, Math.min(6f, neutralValue)) : 1f;
+        final float value = MonetFactors.clampValue(neutralValue);
         List<Pair<String, Function<DynamicScheme, TonalPalette>>> neutralPaletteMap = Arrays.asList(
                 new Pair<>("neutral1", (s) -> s.neutralPalette)
         );
@@ -64,7 +72,8 @@ public class DynamicColors {
         // Call the helper method with the specific neutral palettes
         List<Pair<String, DynamicColor>> result =
                 generatePaletteColors(neutralPaletteMap, lFactor * value, cFactor);
-        result.addAll(whole ? generatePaletteColors(neutralVariantPaletteMap, lFactor * value, cFactor)
+        result.addAll(whole
+                ? generatePaletteColors(neutralVariantPaletteMap, lFactor * value, cFactor)
                 : generatePaletteColors(neutralVariantPaletteMap, value, 1f));
         return result;
     }
@@ -83,14 +92,22 @@ public class DynamicColors {
      * @param whole whether to tint whole palette
      */
     public static List<Pair<String, DynamicColor>> getAllAccentPalette(float lFactor, float cFactor, boolean whole) {
-        return getAllAccentPalette(lFactor, cFactor, whole, new float[] {1f, 1f, 1f, 1f});
+        return getAllAccentPalette(lFactor, cFactor, whole, null);
     }
 
+    /**
+     * Gets all DynamicColor tokens for the accent palettes.
+     * @param lFactor multiplier of luminance
+     * @param cFactor multiplier of chroma
+     * @param whole whether to tint whole palette
+     * @param paletteValues per-palette value (tone) multipliers indexed
+     *                      primary/secondary/tertiary/neutral; null means defaults.
+     */
     public static List<Pair<String, DynamicColor>> getAllAccentPalette(
             float lFactor, float cFactor, boolean whole, float[] paletteValues) {
-        float primaryValue = valueFactor(paletteValues, 0);
-        float secondaryValue = valueFactor(paletteValues, 1);
-        float tertiaryValue = valueFactor(paletteValues, 2);
+        final float primaryValue = MonetFactors.valueAt(paletteValues, MonetFactors.PRIMARY);
+        final float secondaryValue = MonetFactors.valueAt(paletteValues, MonetFactors.SECONDARY);
+        final float tertiaryValue = MonetFactors.valueAt(paletteValues, MonetFactors.TERTIARY);
         List<Pair<String, Function<DynamicScheme, TonalPalette>>> primaryAccentPaletteMap = Arrays.asList(
                 new Pair<>("accent1", (s) -> s.primaryPalette)
         );
@@ -100,7 +117,8 @@ public class DynamicColors {
         List<Pair<String, Function<DynamicScheme, TonalPalette>>> tertiaryPaletteMap = Arrays.asList(
                 new Pair<>("accent3", (s) -> s.tertiaryPalette)
         );
-        // Call the helper method with the specific accent palettes
+        // Call the helper method with the specific accent palettes.
+        // Tertiary follows lFactor/cFactor to match ColorScheme#mAccent3.
         List<Pair<String, DynamicColor>> result =
                 generatePaletteColors(primaryAccentPaletteMap, lFactor * primaryValue, cFactor);
         result.addAll(whole
@@ -108,13 +126,6 @@ public class DynamicColors {
                 : generatePaletteColors(secondaryAccentPaletteMap, secondaryValue, 1f));
         result.addAll(generatePaletteColors(tertiaryPaletteMap, lFactor * tertiaryValue, cFactor));
         return result;
-    }
-
-    private static float valueFactor(float[] values, int index) {
-        if (values == null || values.length <= index || !Float.isFinite(values[index])) {
-            return 1f;
-        }
-        return Math.max(0f, Math.min(6f, values[index]));
     }
 
     /**
@@ -203,9 +214,8 @@ public class DynamicColors {
                         DynamicColor token = new DynamicColor(
                                 /* name= */ tokenName,
                                 /* palette= */ paletteExtractor,
-                                /* tone= */ (s) -> (double) Math.max(0,
-                                        Math.min(100, Math.round(((1000.0f - shade) / 10f)
-                                                * lFactor))),
+                                /* tone= */ (s) -> MonetFactors.clampTone(
+                                        (double) ((1000.0f - shade) / 10f) * lFactor),
                                 /* isBackground= */ true,
                                 /* chromaMultiplier */ (s) -> (double) cFactor,
                                 /* background= */ null,
