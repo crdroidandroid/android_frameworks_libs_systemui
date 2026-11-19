@@ -338,10 +338,17 @@ public class IconProvider implements ResourceBasedOverride {
         }
 
         Drawable loadPaddedDrawable() {
-            if (!"drawable".equals(mResources.getResourceTypeName(mResID))) {
+            Drawable d;
+            try {
+                if (!"drawable".equals(mResources.getResourceTypeName(mResID))) {
+                    return null;
+                }
+                d = mResources.getDrawable(mResID).mutate();
+            } catch (Resources.NotFoundException e) {
+                Log.w(TAG, "Unable to load themed icon resource 0x"
+                        + Integer.toHexString(mResID), e);
                 return null;
             }
-            Drawable d = mResources.getDrawable(mResID).mutate();
             d = new InsetDrawable(d, .2f);
             float inset = getExtraInsetFraction() / (1 + 2 * getExtraInsetFraction());
             Drawable fg = new InsetDrawable(d, inset);
